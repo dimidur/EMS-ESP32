@@ -47,6 +47,8 @@ class EMSuart {
         return 0;
     }
 
+    static void (*on_transmit)(); // when set, called during transmit(), so a test can act while a telegram goes out
+
   private:
     static char * hextoa(char * result, const uint8_t value);
 };

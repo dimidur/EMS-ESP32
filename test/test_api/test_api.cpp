@@ -26,6 +26,7 @@
 #include "web/WebAPIService.h"
 #include "test_shuntingYard.h"
 #include "test_rx_queue.h"
+#include "test_tx_queue.h"
 
 using namespace emsesp;
 
@@ -571,6 +572,7 @@ int main() {
     run_console_tests();      // execute some console tests
     run_shuntingYard_tests(); // execute the shuntingYard tests
     run_rx_queue_tests();     // execute the Rx queue tests
+    run_tx_queue_tests();     // execute the Tx queue tests
 
     return UNITY_END();
 }

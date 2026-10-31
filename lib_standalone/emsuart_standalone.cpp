@@ -48,6 +48,8 @@ void EMSuart::restart() {
 void EMSuart::send_poll(uint8_t data) {
 }
 
+void (*EMSuart::on_transmit)() = nullptr;
+
 /*
  * Send data to Tx line, ending with a <BRK>
  * buf contains the CRC and len is #bytes including the CRC
@@ -56,6 +58,10 @@ void EMSuart::send_poll(uint8_t data) {
 uint16_t EMSuart::transmit(uint8_t * buf, uint8_t len) {
     if (len == 0) {
         return EMS_TX_STATUS_OK; // nothing to send
+    }
+
+    if (on_transmit) {
+        on_transmit();
     }
 
     // Code for when running EMS-ESP standalone without a connected ESP8266 microcontroller

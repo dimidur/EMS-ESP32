@@ -22,6 +22,7 @@
 #include <string>
 #include <deque>
 #include <mutex>
+#include <optional>
 #include <uuid/log.h>
 
 // UART drivers
@@ -436,10 +437,12 @@ class TxService : public EMSbus {
     };
 
     std::deque<QueuedTxTelegram, AllocatorPSRAM<QueuedTxTelegram>> queue() const {
+        std::lock_guard<std::mutex> lock(tx_telegrams_mutex_);
         return tx_telegrams_;
     }
 
     bool tx_queue_empty() const {
+        std::lock_guard<std::mutex> lock(tx_telegrams_mutex_);
         return tx_telegrams_.empty();
     }
 
@@ -449,11 +452,17 @@ class TxService : public EMSbus {
   private:
     std::deque<QueuedTxTelegram, AllocatorPSRAM<QueuedTxTelegram>> tx_telegrams_; // the Tx queue
 
+    // The UART task sends from the queue and adds retries, while other tasks add to it. It also
+    // guards tx_telegram_id_. Never held while transmitting or logging, which would hold up the
+    // bus or the other tasks.
+    mutable std::mutex tx_telegrams_mutex_;
+
     uint32_t telegram_read_count_       = 0; // # Tx successful reads
     uint32_t telegram_write_count_      = 0; // # Tx successful writes
     uint32_t telegram_read_fail_count_  = 0; // # Tx unsuccessful transmits
     uint32_t telegram_write_fail_count_ = 0; // # Tx unsuccessful transmits
 
+    // these four are only used by the UART task, so they need no lock
     std::shared_ptr<Telegram> telegram_last_;
     uint16_t                  telegram_last_post_send_query_; // which type ID to query after a successful send, to read back the values just written
     uint8_t                   retry_count_  = 0;              // count for # Tx retries
@@ -462,6 +471,7 @@ class TxService : public EMSbus {
     uint8_t tx_telegram_id_ = 0; // queue counter
 
     void send_telegram(const QueuedTxTelegram & tx_telegram);
+    void enqueue(std::shared_ptr<Telegram> telegram, const uint16_t validateid, const bool front);
 };
 
 } // namespace emsesp
