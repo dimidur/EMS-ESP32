@@ -25,6 +25,7 @@
 #include "ESPAsyncWebServer.h"
 #include "web/WebAPIService.h"
 #include "test_shuntingYard.h"
+#include "test_rx_queue.h"
 
 using namespace emsesp;
 
@@ -569,6 +570,7 @@ int main() {
     run_manual_tests();       // execute some other manual tests from this file
     run_console_tests();      // execute some console tests
     run_shuntingYard_tests(); // execute the shuntingYard tests
+    run_rx_queue_tests();     // execute the Rx queue tests
 
     return UNITY_END();
 }

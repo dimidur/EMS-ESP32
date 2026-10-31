@@ -21,6 +21,7 @@
 
 #include <string>
 #include <deque>
+#include <mutex>
 #include <uuid/log.h>
 
 // UART drivers
@@ -298,6 +299,7 @@ class RxService : public EMSbus {
     };
 
     std::deque<QueuedRxTelegram, AllocatorPSRAM<QueuedRxTelegram>> queue() const {
+        std::lock_guard<std::mutex> lock(rx_telegrams_mutex_);
         return rx_telegrams_;
     }
 
@@ -310,6 +312,9 @@ class RxService : public EMSbus {
     std::shared_ptr<const Telegram> rx_telegram;               // the incoming Rx telegram
 
     std::deque<QueuedRxTelegram, AllocatorPSRAM<QueuedRxTelegram>> rx_telegrams_; // the Rx Queue
+
+    // the UART task fills the queue and can preempt the main loop, which empties it
+    mutable std::mutex rx_telegrams_mutex_;
 };
 
 class TxService : public EMSbus {

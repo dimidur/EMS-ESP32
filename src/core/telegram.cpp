@@ -129,11 +129,18 @@ std::string Telegram::to_string_message() const {
 
 // checks if we have an Rx telegram that needs processing
 void RxService::loop() {
-    while (!rx_telegrams_.empty()) {
-        auto telegram = rx_telegrams_.front().telegram_;
-        (void)EMSESP::process_telegram(telegram); // further process the telegram
+    while (true) {
+        std::shared_ptr<const Telegram> telegram;
+        {
+            std::lock_guard<std::mutex> lock(rx_telegrams_mutex_);
+            if (rx_telegrams_.empty()) {
+                return;
+            }
+            telegram = rx_telegrams_.front().telegram_;
+            rx_telegrams_.pop_front(); // remove it from the queue
+        }
+        (void)EMSESP::process_telegram(telegram); // further process the telegram, without holding up the UART task
         increment_telegram_count();               // increase rx count
-        rx_telegrams_.pop_front();                // remove it from the queue
     }
 }
 
@@ -235,6 +242,8 @@ void RxService::add(uint8_t * data, uint8_t length) {
     // create the telegram
     auto telegram = std::make_shared<Telegram>(operation, src, dest, type_id, offset, message_data, message_length);
 
+    std::lock_guard<std::mutex> lock(rx_telegrams_mutex_);
+
 // check if queue is full, if so remove top item to make space, except if we're in standalone mode
 #ifndef EMSESP_STANDALONE
     if (rx_telegrams_.size() >= MAX_RX_TELEGRAMS) {
@@ -248,6 +257,8 @@ void RxService::add(uint8_t * data, uint8_t length) {
 // add empty telegram to rx-queue
 void RxService::add_empty(const uint8_t src, const uint8_t dest, const uint16_t type_id, uint8_t offset) {
     auto telegram = std::make_shared<Telegram>(Telegram::Operation::RX, src, dest, type_id, offset, nullptr, 0);
+
+    std::lock_guard<std::mutex> lock(rx_telegrams_mutex_);
     // only if queue is not full
     if (rx_telegrams_.size() < MAX_RX_TELEGRAMS) {
         rx_telegrams_.emplace_back(rx_telegram_id_++, std::move(telegram)); // add to queue
